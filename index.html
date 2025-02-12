@@ -1,11 +1,238 @@
 <!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ระบบขออนุมัติลา</title>
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 
-<html>
-   <head>
-<meta name="viewport" content="width=device-width, initial-scale=1">
-      <base target="_top">
-   </head>
-   <body>
-      <iframe style="position: absolute;top: 0;left: 0;width: 100%;height: 100%;border: 0;" src="https://script.google.com/macros/s/AKfycbyRcFwkgTgrkO2FlKc_Af3j6BLLCe4QnYnIwWmqi1jOWS87AA-r4yZgC7FtCKBWmA8izw/exec"></iframe>
-   </body>ฟก
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #f4f4f4, #e0e0e0);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .container {
+            background: white;
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            width: 100%;
+            max-width: 450px;
+            animation: fadeIn 0.5s ease-in-out;
+        }
+        h2 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 20px;
+            font-weight: bold;
+        }
+        .form-control {
+            border-radius: 8px;
+            border: 1px solid #ddd;
+            padding: 10px;
+            margin-bottom: 15px;
+            transition: border-color 0.3s ease;
+        }
+        .form-control:focus {
+            border-color: #007bff;
+            box-shadow: 0 0 5px rgba(0, 123, 255, 0.5);
+        }
+        .btn {
+            border-radius: 8px;
+            padding: 10px 20px;
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #007bff, #0056b3);
+            border: none;
+        }
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 10px rgba(0, 123, 255, 0.3);
+        }
+        .btn-danger {
+            background: linear-gradient(135deg, #dc3545, #a71d2a);
+            border: none;
+        }
+        .btn-danger:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 10px rgba(220, 53, 69, 0.3);
+        }
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 1050;
+            border-radius: 8px;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <!-- ปุ่มล็อกอิน & ผู้ใช้ -->
+        <div class="text-center mb-3">
+            <button id="loginBtn" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#loginModal">🔑 ล็อกอิน</button>
+            <span id="userDisplay" class="d-none">👤 ผู้ใช้: <strong id="loggedInUser"></strong></span>
+            <button id="logoutBtn" class="btn btn-danger d-none" onclick="logout()">🚪 ออกจากระบบ</button>
+        </div>
+
+        <h2>ระบบขออนุมัติลา</h2>
+
+        <form id="leaveForm">
+            <label>ชื่อ:</label>
+            <input type="text" id="name" class="form-control" readonly>
+
+            <label>อีเมล:</label>
+            <input type="email" id="email" class="form-control" readonly>
+
+            <label>ประเภทการลา:</label>
+            <select id="leaveType" class="form-control">
+                <option value="ลาป่วย">ลาป่วย</option>
+                <option value="ลาพักร้อน">ลาพักร้อน</option>
+                <option value="ลากิจ">ลากิจ</option>
+            </select>
+
+            <label>วันที่เริ่มลา:</label>
+            <input type="date" id="startDate" class="form-control" required>
+
+            <label>วันที่สิ้นสุด:</label>
+            <input type="date" id="endDate" class="form-control" required>
+
+            <label>เหตุผล:</label>
+            <textarea id="reason" class="form-control" placeholder="กรอกเหตุผล (ถ้ามี)"></textarea>
+
+            <button type="button" class="btn btn-success mt-3" onclick="submitLeaveRequest()">📩 ส่งคำขอ</button>
+        </form>
+        <a href="https://script.google.com/macros/s/AKfycbzRnIN-S6C2SHYNqxuo9GIQFC00_WB0BIsCjoDDapUZ38rS0nRE8GL61YaAx_SK4OZe/exec?page=status" class="btn btn-info mt-3">📋 ดูสถานะคำขอลา</a>
+
+    </div>
+
+    <!-- Modal Login -->
+    <div class="modal fade" id="loginModal" tabindex="-1" aria-labelledby="loginModalLabel" aria-hidden="true">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">🔑 เข้าสู่ระบบ</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <label>ชื่อผู้ใช้:</label>
+            <input type="text" id="username" class="form-control" placeholder="กรอกชื่อผู้ใช้">
+            <label class="mt-2">รหัสผ่าน:</label>
+            <input type="password" id="password" class="form-control" placeholder="กรอกรหัสผ่าน">
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">ยกเลิก</button>
+            <button type="button" class="btn btn-primary" onclick="login()">เข้าสู่ระบบ</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Toast -->
+    <div class="toast-container position-fixed bottom-0 end-0 p-3">
+        <div id="toast" class="toast bg-success text-white" role="alert" aria-live="assertive" aria-atomic="true">
+            <div class="d-flex">
+                <div class="toast-body"></div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script>
+        function updateLoginUI() {
+            const isLoggedIn = localStorage.getItem("isLoggedIn") === "true";
+            const username = localStorage.getItem("username") || "";
+            
+            document.getElementById("loginBtn").classList.toggle("d-none", isLoggedIn);
+            document.getElementById("logoutBtn").classList.toggle("d-none", !isLoggedIn);
+            document.getElementById("userDisplay").classList.toggle("d-none", !isLoggedIn);
+            document.getElementById("loggedInUser").textContent = username;
+
+            document.getElementById("name").value = username;
+            document.getElementById("email").value = username ? username + "@company.com" : "";
+        }
+
+        function login() {
+            const username = document.getElementById("username").value;
+            const password = document.getElementById("password").value;
+
+            const validUsers = {
+                "admin": "1234",
+                "manager": "5678"
+            };
+
+            if (validUsers[username] && validUsers[username] === password) {
+                localStorage.setItem("isLoggedIn", "true");
+                localStorage.setItem("username", username);
+                bootstrap.Modal.getInstance(document.getElementById("loginModal")).hide();
+                showToast(`ยินดีต้อนรับ ${username}!`);
+                updateLoginUI();
+            } else {
+                showToast("ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง", "danger");
+            }
+        }
+
+        function logout() {
+            localStorage.removeItem("isLoggedIn");
+            localStorage.removeItem("username");
+            showToast("ออกจากระบบเรียบร้อย");
+            updateLoginUI();
+        }
+
+        function showToast(message) {
+            const toastElement = new bootstrap.Toast(document.getElementById("toast"));
+            document.querySelector("#toast .toast-body").textContent = message;
+            toastElement.show();
+        }
+
+        document.addEventListener("DOMContentLoaded", updateLoginUI);
+      
+     function submitLeaveRequest() {
+        const formData = {
+            name: document.getElementById("name").value,
+            email: document.getElementById("email").value,
+            leaveType: document.getElementById("leaveType").value,
+            startDate: document.getElementById("startDate").value,
+            endDate: document.getElementById("endDate").value,
+            reason: document.getElementById("reason").value
+        };
+
+        if (!formData.name || !formData.email || !formData.startDate || !formData.endDate) {
+            alert("⚠️ กรุณากรอกข้อมูลให้ครบถ้วน");
+            return;
+        }
+
+        google.script.run
+    .withSuccessHandler(() => {
+        alert("✅ ส่งคำขอลาสำเร็จ!");
+        setTimeout(() => {
+            window.location.replace("https://script.google.com/macros/s/AKfycbzl8n1hJ6sfef6NR0uJvDK_8c0Zh7NmIzf4fnC0BqgXQZlb7djPKeDH7j8qkkX39qlGFw/exec?page=status");
+        }, 1000); // ✅ รอ 1 วินาทีก่อนเปลี่ยนหน้า
+    })
+    .withFailureHandler(error => alert("❌ เกิดข้อผิดพลาด: " + error.message))
+    .processLeaveRequest(formData);
+
+
+    }
+
+
+    </script>
+</body>
 </html>
